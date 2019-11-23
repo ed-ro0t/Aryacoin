@@ -1506,6 +1506,7 @@ bool CTransaction::CheckInputs(CValidationState &state, CCoinsViewCache &inputs,
 
 bool CBlock::DisconnectBlock(CValidationState &state, CBlockIndex *pindex, CCoinsViewCache &view, bool *pfClean)
 {
+    komodo_disconnect((CBlockIndex *)pindex,(CBlock *)&block);
     assert(pindex == view.GetBestBlock());
 
     if (pfClean)
@@ -1637,6 +1638,7 @@ bool CBlock::ConnectBlock(CValidationState &state, CBlockIndex* pindex, CCoinsVi
     if (GetHash() == hashGenesisBlock) {
         view.SetBestBlock(pindex);
         pindexGenesisBlock = pindex;
+        komodo_connectblock(pindex,*(CBlock *)&block);
         return true;
     }
 
@@ -1735,6 +1737,7 @@ bool CBlock::ConnectBlock(CValidationState &state, CBlockIndex* pindex, CCoinsVi
         printf("- Verify %u txins: %.2fms (%.3fms/txin)\n", nInputs - 1, 0.001 * nTime2, nInputs <= 1 ? 0 : 0.001 * nTime2 / (nInputs-1));
 
     if (fJustCheck)
+        komodo_connectblock(pindex,*(CBlock *)&block);
         return true;
 
     // Write undo information to disk
@@ -1770,6 +1773,7 @@ bool CBlock::ConnectBlock(CValidationState &state, CBlockIndex* pindex, CCoinsVi
     for (unsigned int i=0; i<vtx.size(); i++)
         SyncWithWallets(GetTxHash(i), vtx[i], this, true);
 
+    komodo_connectblock(pindex,*(CBlock *)&block);
     return true;
 }
 
