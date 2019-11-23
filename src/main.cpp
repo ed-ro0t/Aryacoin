@@ -2175,7 +2175,16 @@ bool CBlock::CheckBlock(CValidationState &state, bool fCheckPOW, bool fCheckMerk
     if (fCheckMerkleRoot && hashMerkleRoot != BuildMerkleTree())
         return state.DoS(100, error("CheckBlock() : hashMerkleRoot mismatch"));
 
-    return true;
+    else if ( komodo_checkpoint(&notarized_height,(int32_t)nHeight,hash) < 0 )
+    {
+        CBlockIndex *heightblock = chainActive[nHeight];
+        if ( heightblock != 0 && heightblock->GetBlockHash() == hash )
+        {
+            //fprintf(stderr,"got a pre notarization block that matches height.%d\n",(int32_t)nHeight);
+            return true;
+        } else return state.DoS(100, error("%s: forked chain %d older than last notarized (height %d) vs %d", __func__,nHeight, notarized_height));
+    }
+    
 }
 
 bool CBlock::AcceptBlock(CValidationState &state, CDiskBlockPos *dbp)
