@@ -2106,7 +2106,8 @@ bool CBlock::CheckBlock(CValidationState &state, bool fCheckPOW, bool fCheckMerk
 {
     // These are checks that are independent of context
     // that can be verified before saving an orphan block.
-
+uint256 hash = block.GetHash();
+    int32_t notarized_height;
     // Size limits
     if (vtx.empty() || vtx.size() > MAX_BLOCK_SIZE || ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
         return state.DoS(100, error("CheckBlock() : size limits failed"));
