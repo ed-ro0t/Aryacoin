@@ -11,6 +11,8 @@
 #include "bitcoinrpc.h"
 #include "db.h"
 
+#include "komodo_rpcblockchain.h"
+
 #include <boost/asio.hpp>
 #include <boost/asio/ip/v6_only.hpp>
 #include <boost/bind.hpp>
@@ -266,6 +268,8 @@ static const CRPCCommand vRPCCommands[] =
     { "lockunspent",            &lockunspent,            false,     false,      true },
     { "listlockunspent",        &listlockunspent,        false,     false,      true },
     { "verifychain",            &verifychain,            true,      false,      false },
+     { "blockchain",         "calc_MoM",               &calc_MoM,               true,  {"height", "MoMdepth"} },
+    { "blockchain",         "height_MoM",             &height_MoM,             true,  {"height"} },
 };
 
 CRPCTable::CRPCTable()
