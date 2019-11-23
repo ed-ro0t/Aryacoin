@@ -73,6 +73,17 @@ Value getinfo(const Array& params, bool fHelp)
     Object obj;
     obj.push_back(Pair("version",       (int)CLIENT_VERSION));
     obj.push_back(Pair("protocolversion",(int)PROTOCOL_VERSION));
+    {
+    int32_t komodo_prevMoMheight();
+    extern uint256 NOTARIZED_HASH,NOTARIZED_DESTTXID,NOTARIZED_MOM;
+    extern int32_t NOTARIZED_HEIGHT,NOTARIZED_MOMDEPTH;
+    obj.pushKV("notarizedhash",         NOTARIZED_HASH.GetHex());
+    obj.pushKV("notarizedtxid",         NOTARIZED_DESTTXID.GetHex());
+    obj.pushKV("notarized",                (int)NOTARIZED_HEIGHT);
+    obj.pushKV("prevMoMheight",                (int)komodo_prevMoMheight());
+    obj.pushKV("notarized_MoMdepth",                (int)NOTARIZED_MOMDEPTH);
+    obj.pushKV("notarized_MoM",         NOTARIZED_MOM.GetHex());
+    }
     if (pwalletMain) {
         obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));
         obj.push_back(Pair("balance",       ValueFromAmount(pwalletMain->GetBalance())));
