@@ -156,11 +156,16 @@ void HandleSIGHUP(int)
 // Start
 //
 #if !defined(QT_GUI)
+
+int32_t komodo_init();
+
 bool AppInit(int argc, char* argv[])
 {
     boost::thread_group threadGroup;
     boost::thread* detectShutdownThread = NULL;
-
+    
+ komodo_init();
+    
     bool fRet = false;
     try
     {
