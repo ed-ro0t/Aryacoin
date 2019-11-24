@@ -14,6 +14,7 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include "komodo_validation011.h"
 
 using namespace std;
 using namespace boost;
@@ -1504,9 +1505,9 @@ bool CTransaction::CheckInputs(CValidationState &state, CCoinsViewCache &inputs,
 
 
 
-bool CBlock::DisconnectBlock(CValidationState &state, CBlockIndex *pindex, CCoinsViewCache &view, bool *pfClean)
+bool CBlock::DisconnectBlock(CBlock& block, CValidationState &state, CBlockIndex *pindex, CCoinsViewCache &view, bool *pfClean)
 {
-    komodo_disconnect((CBlockIndex *)pindex,(CBlock *)&block);
+   
     assert(pindex == view.GetBestBlock());
 
     if (pfClean)
@@ -1524,6 +1525,7 @@ bool CBlock::DisconnectBlock(CValidationState &state, CBlockIndex *pindex, CCoin
     if (blockUndo.vtxundo.size() + 1 != vtx.size())
         return error("DisconnectBlock() : block and undo data inconsistent");
 
+     komodo_disconnect((CBlockIndex *)pindex,(CBlock *)&block);
     // undo transactions in reverse order
     for (int i = vtx.size() - 1; i >= 0; i--) {
         const CTransaction &tx = vtx[i];
@@ -1624,7 +1626,7 @@ void ThreadScriptCheck() {
     scriptcheckqueue.Thread();
 }
 
-bool CBlock::ConnectBlock(CValidationState &state, CBlockIndex* pindex, CCoinsViewCache &view, bool fJustCheck)
+bool CBlock::ConnectBlock(const CBlock& block,CValidationState &state, CBlockIndex* pindex, CCoinsViewCache &view, bool fJustCheck)
 {
     // Check it again in case a previous version let a bad block in
     if (!CheckBlock(state, !fJustCheck, !fJustCheck))
