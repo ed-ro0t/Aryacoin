@@ -2,7 +2,7 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-
+#include "main.h"
 #include "alert.h"
 #include "checkpoints.h"
 #include "db.h"
@@ -14,7 +14,14 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
+#include "wallet.h"
+#include "util.h"
+#include "addrman.h"
+#include "alert.h"
+
 #include "komodo_validation011.h"
+
+
 
 using namespace std;
 using namespace boost;
@@ -52,7 +59,7 @@ bool fReindex = false;
 bool fBenchmark = false;
 bool fTxIndex = false;
 unsigned int nCoinCacheSize = 5000;
-char ASSETCHAINS_SYMBOL[65] = { "GAME" };
+
 
 /** Fees smaller than this (in satoshi) are considered zero fee (for transaction creation) */
 int64 CTransaction::nMinTxFee = 100000;
