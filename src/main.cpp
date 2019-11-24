@@ -1831,7 +1831,7 @@ bool SetBestChain(CValidationState &state, CBlockIndex* pindexNew)
         if (!block.ReadFromDisk(pindex))
             return state.Abort(_("Failed to read block"));
         int64 nStart = GetTimeMicros();
-        if (!DisconnectBlock(block,state, pindex, view))
+        if (!block.DisconnectBlock(block,state, pindex, view))
             return error("SetBestBlock() : DisconnectBlock %s failed", pindex->GetBlockHash().ToString().c_str());
         if (fBenchmark)
             printf("- Disconnect: %.2fms\n", (GetTimeMicros() - nStart) * 0.001);
@@ -1851,7 +1851,7 @@ bool SetBestChain(CValidationState &state, CBlockIndex* pindexNew)
         if (!block.ReadFromDisk(pindex))
             return state.Abort(_("Failed to read block"));
         int64 nStart = GetTimeMicros();
-        if (!ConnectBlock(block,state, pindex, view)) {
+        if (!block.ConnectBlock(block,state, pindex, view)) {
             if (state.IsInvalid()) {
                 InvalidChainFound(pindexNew);
                 InvalidBlockFound(pindex);
@@ -1998,7 +1998,7 @@ bool CBlock::AddToBlockIndex(CValidationState &state, const CDiskBlockPos &pos)
         return state.Abort(_("Failed to write block index"));
 
     // New best?
-    if (!ConnectBestBlock(state))
+    if (!block.ConnectBestBlock(state))
         return false;
 
     if (pindexNew == pindexBest)
@@ -2723,7 +2723,7 @@ bool VerifyDB(int nCheckLevel, int nCheckDepth)
         // check level 3: check for inconsistencies during memory-only disconnect of tip blocks
         if (nCheckLevel >= 3 && pindex == pindexState && (coins.GetCacheSize() + pcoinsTip->GetCacheSize()) <= 2*nCoinCacheSize + 32000) {
             bool fClean = true;
-            if (!DisconnectBlock(block,state, pindex, coins, &fClean))
+            if (!block.DisconnectBlock(block,state, pindex, coins, &fClean))
                 return error("VerifyDB() : *** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString().c_str());
             pindexState = pindex->pprev;
             if (!fClean) {
@@ -2745,7 +2745,7 @@ bool VerifyDB(int nCheckLevel, int nCheckDepth)
             CBlock block;
             if (!block.ReadFromDisk(pindex))
                 return error("VerifyDB() : *** block.ReadFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString().c_str());
-            if (!ConnectBlock(block,state, pindex, coins))
+            if (!block.ConnectBlock(block,state, pindex, coins))
                 return error("VerifyDB() : *** found unconnectable block at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString().c_str());
         }
     }
