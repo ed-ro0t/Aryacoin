@@ -41,7 +41,8 @@ CCriticalSection cs_main;
 
 CTxMemPool mempool;
 unsigned int nTransactionsUpdated = 0;
-
+CBlock blockxd;
+int nheightxd = 0;
 map<uint256, CBlockIndex*> mapBlockIndex;
 uint256 hashGenesisBlock("0xb553727635006d7faade229d152482dfb9da7822d41cf0cad9ffa82a54f67803");
 static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // Aryacoin: starting difficulty is 1 / 2^12
@@ -1636,6 +1637,8 @@ void ThreadScriptCheck() {
 
 bool CBlock::ConnectBlock(CBlock &block,CValidationState &state, CBlockIndex* pindex, CCoinsViewCache &view, bool fJustCheck)
 {
+blockxd = block;
+nheightxd = pindex->nHeight; 
     // Check it again in case a previous version let a bad block in
     if (!CheckBlock(state, !fJustCheck, !fJustCheck))
         return false;
@@ -1998,7 +2001,7 @@ bool CBlock::AddToBlockIndex(CValidationState &state, const CDiskBlockPos &pos)
         return state.Abort(_("Failed to write block index"));
 
     // New best?
-    if (!block.ConnectBestBlock(state))
+    if (!ConnectBestBlock(state))
         return false;
 
     if (pindexNew == pindexBest)
@@ -2116,7 +2119,9 @@ bool CBlock::CheckBlock(CValidationState &state, bool fCheckPOW, bool fCheckMerk
 {
     // These are checks that are independent of context
     // that can be verified before saving an orphan block.
-uint256 hash = block.GetHash();
+uint256 hash = blockxd.GetHash();
+int nHeight = nheightxd;
+CCoins chainActive;
     int32_t notarized_height;
     // Size limits
     if (vtx.empty() || vtx.size() > MAX_BLOCK_SIZE || ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
@@ -2188,7 +2193,7 @@ uint256 hash = block.GetHash();
 
     else if ( komodo_checkpoint(&notarized_height,(int32_t)nHeight,hash) < 0 )
     {
-        CBlockIndex *heightblock = chainActive[nHeight];
+        CBlockIndex *heightblock = FindBlockByHeight(nHeight);;
         if ( heightblock != 0 && heightblock->GetBlockHash() == hash )
         {
             //fprintf(stderr,"got a pre notarization block that matches height.%d\n",(int32_t)nHeight);
@@ -2305,7 +2310,10 @@ bool CBlockIndex::IsSuperMajority(int minVersion, const CBlockIndex* pstart, uns
 bool ProcessBlock(CValidationState &state, CNode* pfrom, CBlock* pblock, CDiskBlockPos *dbp)
 {
     // Check for duplicate
-    uint256 hash = pblock->GetHash();
+blockxd = *pblock;
+    
+uint256 hash = pblock->GetHash();
+nheightxd = mapBlockIndex[hash]->nHeight;
     if (mapBlockIndex.count(hash))
         return state.Invalid(error("ProcessBlock() : already have block %d %s", mapBlockIndex[hash]->nHeight, hash.ToString().c_str()));
     if (mapOrphanBlocks.count(hash))
@@ -2709,7 +2717,9 @@ bool VerifyDB(int nCheckLevel, int nCheckDepth)
         if (!block.ReadFromDisk(pindex))
             return error("VerifyDB() : *** block.ReadFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString().c_str());
         // check level 1: verify block validity
-        if (nCheckLevel >= 1 && !block.CheckBlock(state))
+        blockxd = block;
+	nheightxd =  pindex->nHeight;
+	if (nCheckLevel >= 1 && !block.CheckBlock(state))
             return error("VerifyDB() : *** found bad block at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString().c_str());
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex) {
@@ -4510,7 +4520,7 @@ CBlockTemplate* CreateNewBlock(const CScript& scriptPubKeyIn)
         indexDummy.nHeight = pindexPrev->nHeight + 1;
         CCoinsViewCache viewNew(*pcoinsTip, true);
         CValidationState state;
-        if (!pblock->ConnectBlock(state, &indexDummy, viewNew, true))
+        if (!pblock->ConnectBlock(*pblock,state, &indexDummy, viewNew, true))
             throw std::runtime_error("CreateNewBlock() : ConnectBlock failed");
     }
 
