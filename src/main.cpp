@@ -2,7 +2,7 @@
 // Copyright (c) 2009-2014 The Bitcoin developers
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
-#include "main.h"
+
 #include "alert.h"
 #include "checkpoints.h"
 #include "db.h"
@@ -14,14 +14,9 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
-#include "wallet.h"
-#include "util.h"
-#include "addrman.h"
-#include "alert.h"
 
+//komodo
 #include "komodo_validation011.h"
-
-
 
 using namespace std;
 using namespace boost;
@@ -41,8 +36,7 @@ CCriticalSection cs_main;
 
 CTxMemPool mempool;
 unsigned int nTransactionsUpdated = 0;
-CBlock blockxd;
-int nheightxd = 0;
+
 map<uint256, CBlockIndex*> mapBlockIndex;
 uint256 hashGenesisBlock("0xb553727635006d7faade229d152482dfb9da7822d41cf0cad9ffa82a54f67803");
 static CBigNum bnProofOfWorkLimit(~uint256(0) >> 20); // Aryacoin: starting difficulty is 1 / 2^12
@@ -60,7 +54,6 @@ bool fReindex = false;
 bool fBenchmark = false;
 bool fTxIndex = false;
 unsigned int nCoinCacheSize = 5000;
-
 
 /** Fees smaller than this (in satoshi) are considered zero fee (for transaction creation) */
 int64 CTransaction::nMinTxFee = 100000;
@@ -86,6 +79,10 @@ int64 nHPSTimerStart = 0;
 // Settings
 int64 nTransactionFee = 0;
 int64 nMinimumInputValue = DUST_HARD_LIMIT;
+
+//komodo
+char ASSETCHAINS_SYMBOL[65] = { "AYA" };
+CBlock kmblock;
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1514,9 +1511,8 @@ bool CTransaction::CheckInputs(CValidationState &state, CCoinsViewCache &inputs,
 
 
 
-bool CBlock::DisconnectBlock(CBlock &block, CValidationState &state, CBlockIndex *pindex, CCoinsViewCache &view, bool *pfClean)
+bool CBlock::DisconnectBlock(CBlock &block,CValidationState &state, CBlockIndex *pindex, CCoinsViewCache &view, bool *pfClean)
 {
-   
     assert(pindex == view.GetBestBlock());
 
     if (pfClean)
@@ -1534,7 +1530,8 @@ bool CBlock::DisconnectBlock(CBlock &block, CValidationState &state, CBlockIndex
     if (blockUndo.vtxundo.size() + 1 != vtx.size())
         return error("DisconnectBlock() : block and undo data inconsistent");
 
-     komodo_disconnect((CBlockIndex *)pindex,(CBlock *) &block);
+//komodo
+komodo_disconnect((CBlockIndex *)pindex,(CBlock *)&block);
     // undo transactions in reverse order
     for (int i = vtx.size() - 1; i >= 0; i--) {
         const CTransaction &tx = vtx[i];
@@ -1635,10 +1632,8 @@ void ThreadScriptCheck() {
     scriptcheckqueue.Thread();
 }
 
-bool CBlock::ConnectBlock(CBlock &block,CValidationState &state, CBlockIndex* pindex, CCoinsViewCache &view, bool fJustCheck)
+bool CBlock::ConnectBlock(const CBlock &block,CValidationState &state, CBlockIndex* pindex, CCoinsViewCache &view, bool fJustCheck)
 {
-blockxd = block;
-nheightxd = pindex->nHeight; 
     // Check it again in case a previous version let a bad block in
     if (!CheckBlock(state, !fJustCheck, !fJustCheck))
         return false;
@@ -1651,7 +1646,6 @@ nheightxd = pindex->nHeight;
     if (GetHash() == hashGenesisBlock) {
         view.SetBestBlock(pindex);
         pindexGenesisBlock = pindex;
-        komodo_connectblock(pindex,*(CBlock *)&block);
         return true;
     }
 
@@ -1750,8 +1744,9 @@ nheightxd = pindex->nHeight;
         printf("- Verify %u txins: %.2fms (%.3fms/txin)\n", nInputs - 1, 0.001 * nTime2, nInputs <= 1 ? 0 : 0.001 * nTime2 / (nInputs-1));
 
     if (fJustCheck)
-        komodo_connectblock(pindex,*(CBlock *)&block);
+	komodo_connectblock(pindex,*(CBlock *)&block);
         return true;
+
 
     // Write undo information to disk
     if (pindex->GetUndoPos().IsNull() || (pindex->nStatus & BLOCK_VALID_MASK) < BLOCK_VALID_SCRIPTS)
@@ -1785,7 +1780,6 @@ nheightxd = pindex->nHeight;
     // Watch for transactions paying to me
     for (unsigned int i=0; i<vtx.size(); i++)
         SyncWithWallets(GetTxHash(i), vtx[i], this, true);
-
     komodo_connectblock(pindex,*(CBlock *)&block);
     return true;
 }
@@ -2119,10 +2113,12 @@ bool CBlock::CheckBlock(CValidationState &state, bool fCheckPOW, bool fCheckMerk
 {
     // These are checks that are independent of context
     // that can be verified before saving an orphan block.
-uint256 hash = blockxd.GetHash();
-int nHeight = nheightxd;
-CCoins chainActive;
+
+//komodo
+
+    uint256 hash = kmblock.GetHash();
     int32_t notarized_height;
+	
     // Size limits
     if (vtx.empty() || vtx.size() > MAX_BLOCK_SIZE || ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
         return state.DoS(100, error("CheckBlock() : size limits failed"));
@@ -2191,16 +2187,15 @@ CCoins chainActive;
     if (fCheckMerkleRoot && hashMerkleRoot != BuildMerkleTree())
         return state.DoS(100, error("CheckBlock() : hashMerkleRoot mismatch"));
 
-    else if ( komodo_checkpoint(&notarized_height,(int32_t)nHeight,hash) < 0 )
+    if ( komodo_checkpoint(&notarized_height,(int32_t)nHeight,hash) < 0 )
     {
-        CBlockIndex *heightblock = FindBlockByHeight(nHeight);;
+        CBlockIndex *heightblock = chainActive[nHeight];
         if ( heightblock != 0 && heightblock->GetBlockHash() == hash )
         {
             //fprintf(stderr,"got a pre notarization block that matches height.%d\n",(int32_t)nHeight);
             return true;
         } else return state.DoS(100, error("%s: forked chain %d older than last notarized (height %d) vs %d", __func__,nHeight, notarized_height));
     }
-    
 }
 
 bool CBlock::AcceptBlock(CValidationState &state, CDiskBlockPos *dbp)
@@ -2310,10 +2305,10 @@ bool CBlockIndex::IsSuperMajority(int minVersion, const CBlockIndex* pstart, uns
 bool ProcessBlock(CValidationState &state, CNode* pfrom, CBlock* pblock, CDiskBlockPos *dbp)
 {
     // Check for duplicate
-blockxd = *pblock;
-    
-uint256 hash = pblock->GetHash();
-nheightxd = mapBlockIndex[hash]->nHeight;
+    uint256 hash = pblock->GetHash();
+    //komodo
+	kmblock = *pblock;
+
     if (mapBlockIndex.count(hash))
         return state.Invalid(error("ProcessBlock() : already have block %d %s", mapBlockIndex[hash]->nHeight, hash.ToString().c_str()));
     if (mapOrphanBlocks.count(hash))
@@ -2716,9 +2711,11 @@ bool VerifyDB(int nCheckLevel, int nCheckDepth)
         // check level 0: read from disk
         if (!block.ReadFromDisk(pindex))
             return error("VerifyDB() : *** block.ReadFromDisk failed at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString().c_str());
-        // check level 1: verify block validity
-        blockxd = block;
-	nheightxd =  pindex->nHeight;
+        
+	// check level 1: verify block validity
+        //komodo                                                                                                                    
+	//komodo                                                                                                                    
+	kmblock = block;
 	if (nCheckLevel >= 1 && !block.CheckBlock(state))
             return error("VerifyDB() : *** found bad block at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString().c_str());
         // check level 2: verify undo validity
@@ -2733,7 +2730,7 @@ bool VerifyDB(int nCheckLevel, int nCheckDepth)
         // check level 3: check for inconsistencies during memory-only disconnect of tip blocks
         if (nCheckLevel >= 3 && pindex == pindexState && (coins.GetCacheSize() + pcoinsTip->GetCacheSize()) <= 2*nCoinCacheSize + 32000) {
             bool fClean = true;
-            if (!block.DisconnectBlock(state, pindex, coins, &fClean))
+            if (!block.DisconnectBlock(block,state, pindex, coins, &fClean))
                 return error("VerifyDB() : *** irrecoverable inconsistency in block data at %d, hash=%s", pindex->nHeight, pindex->GetBlockHash().ToString().c_str());
             pindexState = pindex->pprev;
             if (!fClean) {
