@@ -2108,6 +2108,19 @@ bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigne
     return true;
 }
 
+int getprevindexkom(){
+
+CBlockIndex* pindexPrev = NULL;
+    int nHeight = 0;
+    if (hash != hashGenesisBlock) 
+        map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashPrevBlock);
+        if (mi == mapBlockIndex.end())
+            return state.DoS(10, error("AcceptBlock() : prev block not found"));
+        pindexPrev = (*mi).second;
+        nHeight = pindexPrev->nHeight+1;
+
+return nHeight;
+}
 
 bool CBlock::CheckBlock(CBlock &block,CValidationState &state, bool fCheckPOW, bool fCheckMerkleRoot) const
 {
@@ -2116,6 +2129,7 @@ bool CBlock::CheckBlock(CBlock &block,CValidationState &state, bool fCheckPOW, b
 
 //komodo
 
+     int nHeight = getprevindexkom();
     uint256 hash = kmblock.GetHash();
     int32_t notarized_height;
 	
