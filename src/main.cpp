@@ -81,7 +81,7 @@ int64 nTransactionFee = 0;
 int64 nMinimumInputValue = DUST_HARD_LIMIT;
 
 //komodo
-char ASSETCHAINS_SYMBOL[65] = { "AYA" };
+
 CBlock kmblock;
 
 
@@ -2315,7 +2315,7 @@ bool ProcessBlock(CValidationState &state, CNode* pfrom, CBlock* pblock, CDiskBl
         return state.Invalid(error("ProcessBlock() : already have block (orphan) %s", hash.ToString().c_str()));
 
     // Preliminary checks
-    if (!pblock->CheckBlock(*plock,state))
+    if (!pblock->CheckBlock(*pblock,state))
         return error("ProcessBlock() : CheckBlock FAILED");
 
     CBlockIndex* pcheckpoint = Checkpoints::GetLastCheckpoint(mapBlockIndex);
@@ -2716,7 +2716,7 @@ bool VerifyDB(int nCheckLevel, int nCheckDepth)
         //komodo                                                                                                                    
 	//komodo                                                                                                                    
 	kmblock = block;
-	if (nCheckLevel >= 1 && !block.CheckBlock(state))
+	if (nCheckLevel >= 1 && !block.CheckBlock(block,state))
             return error("VerifyDB() : *** found bad block at %d, hash=%s\n", pindex->nHeight, pindex->GetBlockHash().ToString().c_str());
         // check level 2: verify undo validity
         if (nCheckLevel >= 2 && pindex) {
