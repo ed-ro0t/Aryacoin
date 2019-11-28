@@ -64,7 +64,7 @@
 #include <init.h>
 #include <ui_interface.h>
 #include <checkqueue.h>
-
+#include <wallet_ismine.h>
 #define SATOSHIDEN ((uint64_t)100000000L)
 #define dstr(x) ((double)(x) / SATOSHIDEN)
 #define portable_mutex_t pthread_mutex_t
@@ -137,7 +137,7 @@ int32_t komodo_importaddress(std::string addr)
         LOCK2(cs_main, pwallet->cs_wallet);
         if ( address.IsValid() != 0 )
         {
-            isminetype mine = IsMine(*pwallet, address.Get());
+            isminetype mine = IsMinekom(*pwallet, address.Get());
             if ( (mine & ISMINE_SPENDABLE) != 0 || (mine & ISMINE_WATCH_ONLY) != 0 )
             {
                 //printf("komodo_importaddress %s already there\n",EncodeDestination(address).c_str());

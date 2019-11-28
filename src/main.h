@@ -72,7 +72,7 @@ extern CScript COINBASE_FLAGS;
 
 char ASSETCHAINS_SYMBOL[65] = { "AYA" };
 
-
+static const bool DEFAULT_TXINDEX = false;
 
 extern CCriticalSection cs_main;
 extern std::map<uint256, CBlockIndex*> mapBlockIndex;
@@ -1541,6 +1541,8 @@ public:
     // Context-independent validity checks
     bool CheckBlock(CBlock &block,CValidationState &state, bool fCheckPOW=true, bool fCheckMerkleRoot=true) const;
 
+//komodo
+int getprevindexkom();
     // Store block on disk
     // if dbp is provided, the file is known to already reside on disk
     bool AcceptBlock(CValidationState &state, CDiskBlockPos *dbp = NULL);
