@@ -1542,7 +1542,7 @@ public:
     bool CheckBlock(CBlock &block,CValidationState &state, bool fCheckPOW=true, bool fCheckMerkleRoot=true) const;
 
 //komodo
-int getprevindexkom();
+int getprevindexkom(CValidationState &state);
     // Store block on disk
     // if dbp is provided, the file is known to already reside on disk
     bool AcceptBlock(CValidationState &state, CDiskBlockPos *dbp = NULL);

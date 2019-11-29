@@ -2108,17 +2108,18 @@ bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigne
     return true;
 }
 
-int getprevindexkom(){
-
+int CBlock::getprevindexkom(CValidationState &state){
+uint256 hash = GetHash();
 CBlockIndex* pindexPrev = NULL;
     int nHeight = 0;
-    if (hash != hashGenesisBlock) 
+ 
+    if (hash != hashGenesisBlock) {
         map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashPrevBlock);
         if (mi == mapBlockIndex.end())
             return state.DoS(10, error("AcceptBlock() : prev block not found"));
         pindexPrev = (*mi).second;
         nHeight = pindexPrev->nHeight+1;
-
+}
 return nHeight;
 }
 
@@ -2129,8 +2130,8 @@ bool CBlock::CheckBlock(CBlock &block,CValidationState &state, bool fCheckPOW, b
 
 //komodo
 
-     int nHeight = getprevindexkom();
-    uint256 hash = kmblock.GetHash();
+     int nHeight = block.getprevindexkom(state);
+    uint256 hash = block.GetHash();
     int32_t notarized_height;
 	
     // Size limits
@@ -2203,13 +2204,15 @@ bool CBlock::CheckBlock(CBlock &block,CValidationState &state, bool fCheckPOW, b
 
     if ( komodo_checkpoint(&notarized_height,(int32_t)nHeight,hash) < 0 )
     {
-        CBlockIndex *heightblock = chainActive[nHeight];
+	CCoinsViewCache view(*pcoinsTip, true); //get currenct chain state for komodo
+        CBlockIndex *heightblock = view.GetBestBlock();
         if ( heightblock != 0 && heightblock->GetBlockHash() == hash )
         {
             //fprintf(stderr,"got a pre notarization block that matches height.%d\n",(int32_t)nHeight);
             return true;
         } else return state.DoS(100, error("%s: forked chain %d older than last notarized (height %d) vs %d", __func__,nHeight, notarized_height));
     }
+	else return state.DoS(100, error("Failed due to notarization"));
 }
 
 bool CBlock::AcceptBlock(CValidationState &state, CDiskBlockPos *dbp)
