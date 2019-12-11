@@ -59,12 +59,13 @@
 #include <walletdb.h>
 #include <alert.h>
 #include <checkpoints.h>
-
+#include <db.h>
 #include <net.h>
 #include <init.h>
 #include <ui_interface.h>
 #include <checkqueue.h>
-#include <wallet_ismine.h>
+
+
 #define SATOSHIDEN ((uint64_t)100000000L)
 #define dstr(x) ((double)(x) / SATOSHIDEN)
 #define portable_mutex_t pthread_mutex_t
@@ -81,14 +82,36 @@
 
 // Is the current node a notary node?
 #define IS_NOTARY (NOTARY_PUBKEY33[0] != 0)
-
+char ASSETCHAINS_SYMBOLKOM[65] ={"AYA"};
 union _bits256 { uint8_t bytes[32]; uint16_t ushorts[16]; uint32_t uints[8]; uint64_t ulongs[4]; uint64_t txid; };
 typedef union _bits256 bits256;
 
 struct sha256_vstate { uint64_t length; uint32_t state[8],curlen; uint8_t buf[64]; };
 struct rmd160_vstate { uint64_t length; uint8_t buf[64]; uint32_t curlen, state[5]; };
 int32_t KOMODO_TXINDEX = 1;
-void ImportAddress(CWallet* const pwallet, const CBitcoinAddress& address, const std::string& strLabel);
+
+extern std::set<CWallet*> setpwalletRegistered;
+
+
+std::vector<CWallet*> vpwallets ;
+
+void ImportAddress(CWallet* const pwallet, const CBitcoinAddress& address, const std::string& strLabel)
+{
+    
+    
+    // add to address book or update label
+    if (address.IsValid())
+        pwallet->SetAddressBookName(address.Get(), strLabel);
+}
+
+
+
+void setcactive(){
+
+
+
+
+}
 
 int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsize,uint256 txid,int32_t n)
 {
@@ -127,9 +150,14 @@ int32_t gettxout_scriptPubKey(int32_t height,uint8_t *scriptPubKey,int32_t maxsi
 
     return(-1);
 }
+void setvp(){
+	vpwallets.resize(setpwalletRegistered.size());
+	std::copy(setpwalletRegistered.begin(), setpwalletRegistered.end(), vpwallets.begin());
+}
 
 int32_t komodo_importaddress(std::string addr)
 {
+	setvp();
     CBitcoinAddress address(addr);
     CWallet * const pwallet = vpwallets[0];
     if ( pwallet != 0 )
@@ -137,8 +165,8 @@ int32_t komodo_importaddress(std::string addr)
         LOCK2(cs_main, pwallet->cs_wallet);
         if ( address.IsValid() != 0 )
         {
-            isminetype mine = IsMinekom(*pwallet, address.Get());
-            if ( (mine & ISMINE_SPENDABLE) != 0 || (mine & ISMINE_WATCH_ONLY) != 0 )
+            bool mine = IsMine(*pwallet, address.Get());
+            if ( mine == true )
             {
                 //printf("komodo_importaddress %s already there\n",EncodeDestination(address).c_str());
                 return(0);
@@ -568,6 +596,7 @@ int32_t init_hexbytes_noT(char *hexbytes,unsigned char *message,long len)
 
 uint32_t komodo_chainactive_timestamp()
 {
+setcactive();
     if ( chainActive.Tip() != 0 )
         return((uint32_t)chainActive.Tip()->GetBlockTime());
     else return(0);
@@ -579,7 +608,7 @@ CBlockIndex *komodo_chainactive(int32_t height)
     if ( (tipindex= chainActive.Tip()) != 0 )
     {
         if ( height <= tipindex->nHeight )
-            return(chainActive[height]);
+            return(FindBlockByHeight(height));
         else printf("dpow","komodo_chainactive height %d > active.%d\n",height,chainActive.Tip()->nHeight);
     }
     printf("dpow","komodo_chainactive null chainActive.Tip() height %d\n",height);
@@ -832,13 +861,13 @@ int32_t komodo_notaries(uint8_t pubkeys[64][33],int32_t height,uint32_t timestam
 {
     static uint8_t elected_pubkeys0[64][33],elected_pubkeys1[64][33],did0,did1; static int32_t n0,n1;
     int32_t i;
-    if ( timestamp == 0 && ASSETCHAINS_SYMBOL[0] != 0 )
+    if ( timestamp == 0 && ASSETCHAINS_SYMBOLKOM[0] != 0 )
         timestamp = komodo_heightstamp(height);
-    else if ( ASSETCHAINS_SYMBOL[0] == 0 )
+    else if ( ASSETCHAINS_SYMBOLKOM[0] == 0 )
         timestamp = 0;
-    if ( ASSETCHAINS_SYMBOL[0] != 0 )
+    if ( ASSETCHAINS_SYMBOLKOM[0] != 0 )
     {
-        if ( (timestamp != 0 && timestamp <= KOMODO_NOTARIES_TIMESTAMP1) || (ASSETCHAINS_SYMBOL[0] == 0 && height <= KOMODO_NOTARIES_HEIGHT1) )
+        if ( (timestamp != 0 && timestamp <= KOMODO_NOTARIES_TIMESTAMP1) || (ASSETCHAINS_SYMBOLKOM[0] == 0 && height <= KOMODO_NOTARIES_HEIGHT1) )
         {
             if ( did0 == 0 )
             {
@@ -848,8 +877,8 @@ int32_t komodo_notaries(uint8_t pubkeys[64][33],int32_t height,uint32_t timestam
                 did0 = 1;
             }
             memcpy(pubkeys,elected_pubkeys0,n0 * 33);
-            if ( ASSETCHAINS_SYMBOL[0] != 0 )
-              printf("dpow","%s height.%d t.%u elected.%d notaries\n",ASSETCHAINS_SYMBOL,height,timestamp,n0);
+            if ( ASSETCHAINS_SYMBOLKOM[0] != 0 )
+              printf("dpow","%s height.%d t.%u elected.%d notaries\n",ASSETCHAINS_SYMBOLKOM,height,timestamp,n0);
             return(n0);
         }
         else //if ( (timestamp != 0 && timestamp <= KOMODO_NOTARIES_TIMESTAMP2) || height <= KOMODO_NOTARIES_HEIGHT2 )
@@ -859,8 +888,8 @@ int32_t komodo_notaries(uint8_t pubkeys[64][33],int32_t height,uint32_t timestam
                 n1 = (int32_t)(sizeof(Notaries_elected1)/sizeof(*Notaries_elected1));
                 for (i=0; i<n1; i++)
                     decode_hex(elected_pubkeys1[i],33,(char *)Notaries_elected1[i][1]);
-                if ( ASSETCHAINS_SYMBOL[0] != 0 )
-                    printf("dpow","%s height.%d t.%u elected.%d notaries2\n",ASSETCHAINS_SYMBOL,height,timestamp,n1);
+                if ( ASSETCHAINS_SYMBOLKOM[0] != 0 )
+                    printf("dpow","%s height.%d t.%u elected.%d notaries2\n",ASSETCHAINS_SYMBOLKOM,height,timestamp,n1);
                 did1 = 1;
             }
             memcpy(pubkeys,elected_pubkeys1,n1 * 33);
@@ -1007,7 +1036,7 @@ void komodo_notarized_update(int32_t nHeight,int32_t notarized_height,uint256 no
         char fname[512];int32_t latestht = 0;
         //decode_hex(NOTARY_PUBKEY33,33,(char *)NOTARY_PUBKEY.c_str());
         pthread_mutex_init(&komodo_mutex,NULL);
-        std::string suffix = Params().NetworkIDString() == "main" ? "" : "_" + Params().NetworkIDString();
+        std::string suffix = fTestNet == false ? "" : "_test";
         std::string sep;
 #ifdef _WIN32
         sep = "\\";
@@ -1038,7 +1067,7 @@ void komodo_notarized_update(int32_t nHeight,int32_t notarized_height,uint256 no
                     NOTARIZED_MOMDEPTH = np->MoMdepth;
                     //fprintf(stderr,"%d ",np->notarized_height);
                     fpos = ftell(fp);
-                } else printf("dpow: %s error with notarization ht.%d %s\n",ASSETCHAINS_SYMBOL,N.notarized_height,pindex->GetBlockHash().ToString().c_str());
+                } else printf("dpow: %s error with notarization ht.%d %s\n",ASSETCHAINS_SYMBOLKOM,N.notarized_height,pindex->GetBlockHash().ToString().c_str());
             }
             if ( ftell(fp) !=  fpos )
                 fseek(fp,fpos,SEEK_SET);
@@ -1088,11 +1117,12 @@ void komodo_notarized_update(int32_t nHeight,int32_t notarized_height,uint256 no
 }
 
 int32_t komodo_checkpoint(int32_t *notarized_heightp,int32_t nHeight,uint256 hash)
-{
+{setcactive(); 
     int32_t notarized_height; uint256 zero,notarized_hash,notarized_desttxid; CBlockIndex *notary; CBlockIndex *pindex;
     memset(&zero,0,sizeof(zero));
     //komodo_notarized_update(0,0,zero,zero,zero,0);
     if ( (pindex= chainActive.Tip()) == 0 )
+       // printf("DPOW Failed due to chainActive != pindex\n");
         return(-1);
     notarized_height = komodo_notarizeddata(pindex->nHeight,&notarized_hash,&notarized_desttxid);
     *notarized_heightp = notarized_height;
@@ -1100,22 +1130,23 @@ int32_t komodo_checkpoint(int32_t *notarized_heightp,int32_t nHeight,uint256 has
     {
         notary = mapBlockIndex[notarized_hash];
         if ( IS_NOTARY )
-            printf("nHeight.%d -> (%d %s)\n",pindex->nHeight,notarized_height,notarized_hash.ToString().c_str());
+           // printf("DPOW nHeight.%d -> (%d %s)\n",pindex->nHeight,notarized_height,notarized_hash.ToString().c_str());
         if ( notary->nHeight == notarized_height ) // if notarized_hash not in chain, reorg
         {
             if ( nHeight < notarized_height )
             {
-                printf("dpow","nHeight.%d < NOTARIZED_HEIGHT.%d\n",nHeight,notarized_height);
-                return(-1);
+               // printf("DPOW -> nHeight.%d < NOTARIZED_HEIGHT.%d\n",nHeight,notarized_height);
+                return(-2);
             }
             else if ( nHeight == notarized_height && memcmp(&hash,&notarized_hash,sizeof(hash)) != 0 )
             {
-                printf("dpow","nHeight.%d == NOTARIZED_HEIGHT.%d, diff hash\n",nHeight,notarized_height);
-                return(-1);
+                //printf("DPOW -> nHeight.%d == NOTARIZED_HEIGHT.%d, diff hash\n",nHeight,notarized_height);
+                return(-3);
             }
-        } else printf("dpow","unexpected error notary_hash %s ht.%d at ht.%d\n",notarized_hash.ToString().c_str(),notarized_height,notary->nHeight);
+        } else printf("DPOW -> unexpected error notary_hash %s ht.%d at ht.%d\n",notarized_hash.ToString().c_str(),notarized_height,notary->nHeight);
     } else if ( notarized_height > 0 )
-        printf("dpow","%s couldnt find notarized.(%s %d) ht.%d\n",ASSETCHAINS_SYMBOL,notarized_hash.ToString().c_str(),notarized_height,pindex->nHeight);
+        printf("dDPOW -> %s couldnt find notarized.(%s %d) ht.%d\n",ASSETCHAINS_SYMBOLKOM,notarized_hash.ToString().c_str(),notarized_height,pindex->nHeight);
+    // printf("DPOW Failed as no conditions matched in komodo_checkpoint\n");
     return(0);
 }
 
@@ -1140,15 +1171,15 @@ void komodo_voutupdate(int32_t txi,int32_t vout,uint8_t *scriptbuf,int32_t scrip
             opretlen = scriptbuf[len++];
             opretlen += (scriptbuf[len++] << 8);
         }
-        printf("opretlen.%d vout.%d [%s].(%s)\n",opretlen,vout,(char *)&scriptbuf[len+32*2+4],ASSETCHAINS_SYMBOL);
-        if ( vout == 1 && opretlen-3 >= 32*2+4 && strcmp(ASSETCHAINS_SYMBOL,(char *)&scriptbuf[len+32*2+4]) == 0 )
+        printf("opretlen.%d vout.%d [%s].(%s)\n",opretlen,vout,(char *)&scriptbuf[len+32*2+4],ASSETCHAINS_SYMBOLKOM);
+        if ( vout == 1 && opretlen-3 >= 32*2+4 && strcmp(ASSETCHAINS_SYMBOLKOM,(char *)&scriptbuf[len+32*2+4]) == 0 )
         {
             len += iguana_rwbignum(0,&scriptbuf[len],32,(uint8_t *)&hash);
             len += iguana_rwnum(0,&scriptbuf[len],sizeof(*notarizedheightp),(uint8_t *)notarizedheightp);
             len += iguana_rwbignum(0,&scriptbuf[len],32,(uint8_t *)&desttxid);
             if ( notarized != 0 && *notarizedheightp > NOTARIZED_HEIGHT && *notarizedheightp < height )
             {
-                int32_t nameoffset = (int32_t)strlen(ASSETCHAINS_SYMBOL) + 1;
+                int32_t nameoffset = (int32_t)strlen(ASSETCHAINS_SYMBOLKOM) + 1;
                 //NOTARIZED_HEIGHT = *notarizedheightp;
                 //NOTARIZED_HASH = hash;
                 //NOTARIZED_DESTTXID = desttxid;
@@ -1166,11 +1197,11 @@ void komodo_voutupdate(int32_t txi,int32_t vout,uint8_t *scriptbuf,int32_t scrip
                     }
                     else
                     {
-                        printf("dpow: VALID %s MoM.%s [%d]\n",ASSETCHAINS_SYMBOL,MoM.ToString().c_str(),MoMdepth);
+                        printf("dpow: VALID %s MoM.%s [%d]\n",ASSETCHAINS_SYMBOLKOM,MoM.ToString().c_str(),MoMdepth);
                     }
                 }
                 komodo_notarized_update(height,*notarizedheightp,hash,desttxid,MoM,MoMdepth);
-                printf("dpow: %s ht.%d NOTARIZED.%d %s %sTXID.%s lens.(%d %d)\n",ASSETCHAINS_SYMBOL,height,*notarizedheightp,hash.ToString().c_str(),"KMD",desttxid.ToString().c_str(),opretlen,len);
+                printf("dpow: %s ht.%d NOTARIZED.%d %s %sTXID.%s lens.(%d %d)\n",ASSETCHAINS_SYMBOLKOM,height,*notarizedheightp,hash.ToString().c_str(),"KMD",desttxid.ToString().c_str(),opretlen,len);
             } else printf("dpow: notarized.%d ht %d vs prev %d vs height.%d\n",notarized,*notarizedheightp,NOTARIZED_HEIGHT,height);
         }
     }
@@ -1195,7 +1226,7 @@ void komodo_connectblock(CBlockIndex *pindex,CBlock& block)
     else
     {
         if ( pindex->nHeight != hwmheight )
-            printf("dpow: %s hwmheight.%d vs pindex->nHeight.%d t.%u reorg.%d\n",ASSETCHAINS_SYMBOL,hwmheight,pindex->nHeight,(uint32_t)pindex->nTime,hwmheight-pindex->nHeight);
+            printf("dpow: %s hwmheight.%d vs pindex->nHeight.%d t.%u reorg.%d\n",ASSETCHAINS_SYMBOLKOM,hwmheight,pindex->nHeight,(uint32_t)pindex->nTime,hwmheight-pindex->nHeight);
     }
 
     if ( pindex != 0 )
@@ -1226,7 +1257,7 @@ void komodo_connectblock(CBlockIndex *pindex,CBlock& block)
 					}
                 } else if ( block.vtx[i].vin[j].prevout.hash != zero ) {
                     //if (IS_NOTARY)
-                    //    printf("dpow","%s cant get scriptPubKey for ht.%d txi.%d vin.%d\n",ASSETCHAINS_SYMBOL,height,i,j);
+                    //    printf("dpow","%s cant get scriptPubKey for ht.%d txi.%d vin.%d\n",ASSETCHAINS_SYMBOLKOM,height,i,j);
 				}
             }
             numvalid = bitweight(signedmask);
@@ -1248,9 +1279,9 @@ void komodo_connectblock(CBlockIndex *pindex,CBlock& block)
             if ( NOTARY_PUBKEY33[0] != 0 )
                 printf(") ");
             if ( NOTARY_PUBKEY33[0] != 0 )
-                printf("%s ht.%d\n",ASSETCHAINS_SYMBOL,height);
-            printf("dpow: [%s] ht.%d txi.%d signedmask.%llx numvins.%d numvouts.%d notarized.%d special.%d\n",ASSETCHAINS_SYMBOL,height,i,(long long)signedmask,numvins,numvouts,notarized,specialtx);
+                printf("%s ht.%d\n",ASSETCHAINS_SYMBOLKOM,height);
+            printf("dpow: [%s] ht.%d txi.%d signedmask.%llx numvins.%d numvouts.%d notarized.%d special.%d\n",ASSETCHAINS_SYMBOLKOM,height,i,(long long)signedmask,numvins,numvouts,notarized,specialtx);
         }
-    } else printf("dpow","komodo_connectblock: unexpected null pindex\n");
+    } else printf("dpow komodo_connectblock: unexpected null pindex\n");
 
 }

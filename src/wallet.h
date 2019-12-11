@@ -26,6 +26,8 @@ class CReserveKey;
 class COutput;
 class CCoinControl;
 
+
+
 /** (client) version numbers for particular wallet features */
 enum WalletFeature
 {

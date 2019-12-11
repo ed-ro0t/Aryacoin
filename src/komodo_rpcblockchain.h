@@ -16,11 +16,23 @@
 #ifndef komodo_rpcblockchain_h
 #define komodo_rpcblockchain_h
 
+using namespace std;
 #include "main.h"
-
+#include "chain.h"
+//#include <Value/include/Value.h>
+using namespace json_spirit;
 int32_t komodo_MoMdata(int32_t *notarized_htp,uint256 *MoMp,uint256 *kmdtxidp,int32_t height,uint256 *MoMoMp,int32_t *MoMoMoffsetp,int32_t *MoMoMdepthp,int32_t *kmdstartip,int32_t *kmdendip);
 uint256 komodo_calcMoM(int32_t height,int32_t MoMdepth);
-extern char ASSETCHAINS_SYMBOL[65];
+char ASSETCHAINS_SYMBOL[65] = {"AYA"};
+
+void setchactive(){ CCoinsViewCache view(*pcoinsTip, true);   
+                            CBlockIndex *heightblk = view.GetBestBlock();   
+                       chainActive.SetTip(heightblk);   
+                                                }          
+
+
+
+
 
 int32_t komodo_MoM(int32_t *notarized_heightp,uint256 *MoMp,uint256 *kmdtxidp,int32_t nHeight,uint256 *MoMoMp,int32_t *MoMoMoffsetp,int32_t *MoMoMdepthp,int32_t *kmdstartip,int32_t *kmdendip)
 {
@@ -38,9 +50,9 @@ int32_t komodo_MoM(int32_t *notarized_heightp,uint256 *MoMp,uint256 *kmdtxidp,in
     return(depth);
 }
 
-UniValue calc_MoM(const UniValue& params, bool fHelp)
+Value calc_MoM(const Array& params, bool fHelp)
 {
-    int32_t height,MoMdepth; uint256 MoM; UniValue ret(UniValue::VOBJ); UniValue a(UniValue::VARR);
+    int32_t height,MoMdepth; uint256 MoM; Object ret; 
     if ( fHelp || params.size() != 2 )
         throw runtime_error("calc_MoM height MoMdepth\n");
     LOCK(cs_main);
@@ -52,6 +64,7 @@ UniValue calc_MoM(const UniValue& params, bool fHelp)
         throw runtime_error("calc_MoM illegal MoMdepth, must be positive and less than height\n");
 
     //fprintf(stderr,"height_MoM height.%d\n",height);
+
     MoM = komodo_calcMoM(height,MoMdepth);
     ret.push_back(Pair("coin",(char *)(ASSETCHAINS_SYMBOL[0] == 0 ? "KMD" : ASSETCHAINS_SYMBOL)));
     ret.push_back(Pair("height",height));
@@ -60,9 +73,9 @@ UniValue calc_MoM(const UniValue& params, bool fHelp)
     return ret;
 }
 
-UniValue height_MoM(const UniValue& params, bool fHelp)
-{
-    int32_t height,depth,notarized_height,MoMoMdepth,MoMoMoffset,kmdstarti,kmdendi; uint256 MoM,MoMoM,kmdtxid; uint32_t timestamp = 0; UniValue ret(UniValue::VOBJ); UniValue a(UniValue::VARR);
+Value height_MoM(const Array& params, bool fHelp)
+{setchactive(); 
+    int32_t height,depth,notarized_height,MoMoMdepth,MoMoMoffset,kmdstarti,kmdendi; uint256 MoM,MoMoM,kmdtxid; uint32_t timestamp = 0; Object ret; 
     if ( fHelp || params.size() != 1 )
         throw runtime_error("height_MoM height\n");
     LOCK(cs_main);

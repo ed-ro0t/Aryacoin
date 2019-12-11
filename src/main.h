@@ -70,7 +70,7 @@ static const int fHaveUPnP = false;
 extern CScript COINBASE_FLAGS;
 
 
-char ASSETCHAINS_SYMBOL[65] = { "AYA" };
+
 
 static const bool DEFAULT_TXINDEX = false;
 
@@ -2264,9 +2264,6 @@ struct CBlockTemplate
 #if defined(_M_IX86) || defined(__i386__) || defined(__i386) || defined(_M_X64) || defined(__x86_64__) || defined(_M_AMD64)
 extern unsigned int cpuid_edx;
 #endif
-
-
-
 
 
 /** Used to relay blocks as header + vector<merkle branch>

@@ -76,13 +76,15 @@ Value getinfo(const Array& params, bool fHelp)
     {
     int32_t komodo_prevMoMheight();
     extern uint256 NOTARIZED_HASH,NOTARIZED_DESTTXID,NOTARIZED_MOM;
-    extern int32_t NOTARIZED_HEIGHT,NOTARIZED_MOMDEPTH;
-    obj.pushKV("notarizedhash",         NOTARIZED_HASH.GetHex());
-    obj.pushKV("notarizedtxid",         NOTARIZED_DESTTXID.GetHex());
-    obj.pushKV("notarized",                (int)NOTARIZED_HEIGHT);
-    obj.pushKV("prevMoMheight",                (int)komodo_prevMoMheight());
-    obj.pushKV("notarized_MoMdepth",                (int)NOTARIZED_MOMDEPTH);
-    obj.pushKV("notarized_MoM",         NOTARIZED_MOM.GetHex());
+	    extern int32_t NOTARIZED_HEIGHT,NOTARIZED_MOMDEPTH;
+                          obj.push_back(Pair("notarizedhash", 
+NOTARIZED_HASH.GetHex())); obj.push_back(Pair("notarizedtxid", 
+NOTARIZED_DESTTXID.GetHex()));
+    obj.push_back(Pair("notarized", (int)NOTARIZED_HEIGHT));
+    obj.push_back(Pair("prevMoMheight", (int)komodo_prevMoMheight())); 
+obj.push_back(Pair("notarized_MoMdepth", (int)NOTARIZED_MOMDEPTH)); 
+obj.push_back(Pair("notarized_MoM", NOTARIZED_MOM.GetHex()));
+
     }
     if (pwalletMain) {
         obj.push_back(Pair("walletversion", pwalletMain->GetVersion()));

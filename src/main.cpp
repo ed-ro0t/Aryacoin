@@ -14,9 +14,10 @@
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
-
+#include "chain.h"
 //komodo
 #include "komodo_validation011.h"
+
 
 using namespace std;
 using namespace boost;
@@ -28,7 +29,7 @@ using namespace boost;
 //
 // Global state
 //
-
+bool fCheckpointsEnabled = true;
 CCriticalSection cs_setpwalletRegistered;
 set<CWallet*> setpwalletRegistered;
 
@@ -83,7 +84,7 @@ int64 nMinimumInputValue = DUST_HARD_LIMIT;
 //komodo
 
 CBlock kmblock;
-
+cActive chainActive;
 
 //////////////////////////////////////////////////////////////////////////////
 //
@@ -1250,13 +1251,15 @@ void static InvalidChainFound(CBlockIndex* pindexNew)
         pblocktree->WriteBestInvalidWork(CBigNum(nBestInvalidWork));
         uiInterface.NotifyBlocksChanged();
     }
+    //repair seg fault
+//    int64 btime = pindexBest->GetBlockTime();
     printf("InvalidChainFound: invalid block=%s  height=%d  log2_work=%.8g  date=%s\n",
       pindexNew->GetBlockHash().ToString().c_str(), pindexNew->nHeight,
       log(pindexNew->nChainWork.getdouble())/log(2.0), DateTimeStrFormat("%Y-%m-%d %H:%M:%S",
       pindexNew->GetBlockTime()).c_str());
-    printf("InvalidChainFound:  current best=%s  height=%d  log2_work=%.8g  date=%s\n",
-      hashBestChain.ToString().c_str(), nBestHeight, log(nBestChainWork.getdouble())/log(2.0),
-      DateTimeStrFormat("%Y-%m-%d %H:%M:%S", pindexBest->GetBlockTime()).c_str());
+    //printf("InvalidChainFound:  current best=%s  height=%d  log2_work=%.8g  date=%s\n",
+   //   hashBestChain.ToString().c_str(), nBestHeight, log(nBestChainWork.getdouble())/log(2.0),
+    //  DateTimeStrFormat("%Y-%m-%d %H:%M:%S", btime).c_str());
     if (pindexBest && nBestInvalidWork > nBestChainWork + (pindexBest->GetBlockWork() * 6).getuint256())
         printf("InvalidChainFound: Warning: Displayed transactions may not be correct! You may need to upgrade, or other nodes may need to upgrade.\n");
 }
@@ -1531,6 +1534,9 @@ bool CBlock::DisconnectBlock(CBlock &block,CValidationState &state, CBlockIndex 
         return error("DisconnectBlock() : block and undo data inconsistent");
 
 //komodo
+     CCoinsViewCache komview(*pcoinsTip, true);
+    CBlockIndex *heightblock = komview.GetBestBlock();
+    chainActive.SetTip(heightblock);
 komodo_disconnect((CBlockIndex *)pindex,(CBlock *)&block);
     // undo transactions in reverse order
     for (int i = vtx.size() - 1; i >= 0; i--) {
@@ -1649,6 +1655,10 @@ bool CBlock::ConnectBlock(CBlock &block,CValidationState &state, CBlockIndex* pi
         return true;
     }
 
+    //CCoinsViewCache komview(*pcoinsTip, true);
+    //CBlockIndex *heightblockkom = komview.GetBestBlock();
+    //chainActive.SetTip(heightblockkom);
+
     bool fScriptChecks = pindex->nHeight >= Checkpoints::GetTotalBlocksEstimate();
 
     // Do not allow blocks that contain transactions which 'overwrite' older transactions,
@@ -1744,7 +1754,9 @@ bool CBlock::ConnectBlock(CBlock &block,CValidationState &state, CBlockIndex* pi
         printf("- Verify %u txins: %.2fms (%.3fms/txin)\n", nInputs - 1, 0.001 * nTime2, nInputs <= 1 ? 0 : 0.001 * nTime2 / (nInputs-1));
 
     if (fJustCheck)
-	komodo_connectblock(pindex,*(CBlock *)&block);
+        
+        
+	    //komodo_connectblock(pindex,*(CBlock *)&block);
         return true;
 
 
@@ -1780,6 +1792,7 @@ bool CBlock::ConnectBlock(CBlock &block,CValidationState &state, CBlockIndex* pi
     // Watch for transactions paying to me
     for (unsigned int i=0; i<vtx.size(); i++)
         SyncWithWallets(GetTxHash(i), vtx[i], this, true);
+    
     komodo_connectblock(pindex,*(CBlock *)&block);
     return true;
 }
@@ -2109,18 +2122,57 @@ bool FindUndoPos(CValidationState &state, int nFile, CDiskBlockPos &pos, unsigne
 }
 
 int CBlock::getprevindexkom(CValidationState &state){
-uint256 hash = GetHash();
-CBlockIndex* pindexPrev = NULL;
+    uint256 hash = GetHash();
+    CBlockIndex* pindexPrev = NULL;
     int nHeight = 0;
  
-    if (hash != hashGenesisBlock) {
+    if (hash != hashGenesisBlock) 
+    {
         map<uint256, CBlockIndex*>::iterator mi = mapBlockIndex.find(hashPrevBlock);
         if (mi == mapBlockIndex.end())
             return state.DoS(10, error("AcceptBlock() : prev block not found"));
         pindexPrev = (*mi).second;
         nHeight = pindexPrev->nHeight+1;
+    }
+    return nHeight;
 }
-return nHeight;
+
+CBlockIndex* FindBlockByHeightkom(int h){
+
+     CBlockIndex *pblockindexx;
+     
+    if (h < nBestHeight / 2)
+
+    {printf("Find height condition 1 is true \n");
+        pblockindexx = pindexGenesisBlock;
+        while (pblockindexx->nHeight < h)
+        {
+             pblockindexx = pblockindexx->pnext;
+
+        }
+
+
+    }
+        
+    
+           
+
+    else 
+    {printf("Find height condition 2 is true \n" );
+         pblockindexx = pindexBest;
+          while (pblockindexx->nHeight > h)
+          {
+             pblockindexx = pblockindexx->pprev;
+          }
+    }
+       
+       
+           
+    printf("%s Find block found index %d \n" ,__func__,pblockindexx->nHeight );
+
+    return pblockindexx;
+
+
 }
 
 bool CBlock::CheckBlock(CBlock &block,CValidationState &state, bool fCheckPOW, bool fCheckMerkleRoot) const
@@ -2131,9 +2183,10 @@ bool CBlock::CheckBlock(CBlock &block,CValidationState &state, bool fCheckPOW, b
 //komodo
 
      int nHeight = block.getprevindexkom(state);
-    uint256 hash = block.GetHash();
+    uint256 hash = GetHash();
     int32_t notarized_height;
 	
+    printf("%s: checking block with hash %s \n",hash.ToString());
     // Size limits
     if (vtx.empty() || vtx.size() > MAX_BLOCK_SIZE || ::GetSerializeSize(*this, SER_NETWORK, PROTOCOL_VERSION) > MAX_BLOCK_SIZE)
         return state.DoS(100, error("CheckBlock() : size limits failed"));
@@ -2202,17 +2255,38 @@ bool CBlock::CheckBlock(CBlock &block,CValidationState &state, bool fCheckPOW, b
     if (fCheckMerkleRoot && hashMerkleRoot != BuildMerkleTree())
         return state.DoS(100, error("CheckBlock() : hashMerkleRoot mismatch"));
 
-    if ( komodo_checkpoint(&notarized_height,(int32_t)nHeight,hash) < 0 )
+    if (hash == hashGenesisBlock)
+        return true;
+
+    CCoinsViewCache komview(*pcoinsTip, true);
+    CBlockIndex *heightblock = komview.GetBestBlock();
+    chainActive.SetTip(heightblock);
+    int komcheckpoint = komodo_checkpoint(&notarized_height,(int32_t)nHeight,hash);
+    printf("Komodo Checkpoint Value %d \n",komcheckpoint);
+    if ( komcheckpoint < 0 )
     {
-	CCoinsViewCache view(*pcoinsTip, true); //get currenct chain state for komodo
-        CBlockIndex *heightblock = view.GetBestBlock();
-        if ( heightblock != 0 && heightblock->GetBlockHash() == hash )
+	//CCoinsViewCache view(*pcoinsTip, true); //get currenct chain state for komodo
+     //   CBlockIndex *heightblock = view.GetBestBlock();
+        printf("%s Current NHeight %d \n ",__func__,nHeight);
+    CBlockIndex *heightblock = FindBlockByHeightkom(nHeight);
+
+    uint256 hhkomhash = heightblock->GetBlockHash() ;
+    printf("%s Komhash  %s \n",hhkomhash.ToString());
+        if ( (heightblock != 0 && hhkomhash == hash) )
         {
             //fprintf(stderr,"got a pre notarization block that matches height.%d\n",(int32_t)nHeight);
             return true;
-        } else return state.DoS(100, error("%s: forked chain %d older than last notarized (height %d) vs %d", __func__,nHeight, notarized_height));
+        } 
+        else 
+        {          
+            //printf("nHeight block hash %s ",hhkomhash);
+
+            return state.DoS(100, error("%s: forked chain %d older than last notarized (height %d) vs %d  ", __func__,nHeight, notarized_height));
+
+        }
     }
-	else return state.DoS(100, error("Failed due to notarization"));
+	
+    return true;
 }
 
 bool CBlock::AcceptBlock(CValidationState &state, CDiskBlockPos *dbp)
