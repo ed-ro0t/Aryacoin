@@ -1,6 +1,15 @@
 AryaCoin development tree
 
-AryaCoin is a PoW-based cryptocurrency.
+AryaCoin is a DPoW-based cryptocurrency.
+
+DPOW was created by James (JL777) , who thought of this disadvantage of traditional POW used by blockchains with low network hashrates.  That is when he came up with DPOW , his idea was to "Using BTC as time sequence server to allow cross chain atomic swap and increase security of altchain" 
+
+DPOW has been success for many other Altcoins , along with Komodo which was built on DPOW it self . Komodo uses 64 special nodes known as Notary nodes which are elected every year to ensure DPOW works efficiently.
+
+Current DPOW solution uses bitcoin's blockchain to record the current state of the Altcoin's blockchain , which is then used as a reference to validate new blocks . 
+
+DPOW uses all the POW core internals and just adds a layer of verification to ensure enhanced security .
+
 
 Development process
 Developers work in their own trees, then submit pull requests when they think their feature or bug fix is ready.
